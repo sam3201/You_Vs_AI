@@ -1,119 +1,104 @@
 #include "utils/raylib/raylib.h"
+#include "utils/raylib/raymath.h"
 #include "utils/You_Vs_AI.h"
-#include <math.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
 
-void initialize_board(Board* board) {
-  for (int i = 0; i < GRID_SIZE; i++) {
-    for (int j = 0; j < GRID_SIZE; j++) {
-      board->board[i][j].health = 100; 
+void generate_maze(Board* board) {
+    srand(time(NULL));
 
-      if (i == 0 || j == 0 || i == GRID_SIZE - 1 || j == GRID_SIZE - 1) {
-        board->board[i][j].type = BORDER;
-      } else {
-        board->board[i][j].type = TILE; 
-      }
-
-      board->characters[i][j] = NONE;
-    }
+    for (int i = 0; i < MAZE_SIZE; i++) {
+      int tileX = rand() % (GRID_SIZE - 2) + 1;
+      int tileY = rand() % (GRID_SIZE - 2) + 1;
+      board->board[tileX][tileY].type = TILE;
+      board->board[tileX][tileY].health = 100;
   }
 }
 
-void generate_maze(Board* board) {
-  srand(time(NULL));
-
-  int startX = rand() % (GRID_SIZE - 2) + 1;
-  int startY = rand() % (GRID_SIZE - 2) + 1;
-
-  board->board[startX][startY].type = TILE;
-
-  int currentX = startX;
-  int currentY = startY;
-
-  while (true) {
-    int directions[4] = {0, 0, 0, 0};
-    int directionsCount = 0;
-
-    if (currentX > 1 && board->board[currentX - 2][currentY].type == TILE) directions[0] = 1;
-    if (currentX < GRID_SIZE - 2 && board->board[currentX + 2][currentY].type == TILE) directions[1] = 1;
-    if (currentY > 1 && board->board[currentX][currentY - 2].type == TILE) directions[2] = 1;
-    if (currentY < GRID_SIZE - 2 && board->board[currentX][currentY + 2].type == TILE) directions[3] = 1;
-
-    if (directionsCount == 0) break;
-
-    int directionIndex = rand() % directionsCount;
-    int direction = directions[directionIndex];
-
-    switch (direction) {
-      case 0:
-    currentX -= 2;
-    board->board[currentX + 1][currentY].type = TILE;
-    board->board[currentX][currentY + 1].type = TILE;
-    break;
-    case 1:
-    currentX += 2;
-    board->board[currentX][currentY + 1].type = TILE;
-    board->board[currentX + 1][currentY].type = TILE;
-    break;
-    case 2:
-    currentY -= 2;
-    board->board[currentX + 1][currentY].type = TILE;
-    board->board[currentX][currentY + 1].type = TILE;
-    break;
-    case 3:
-    currentY += 2;
-    board->board[currentX + 1][currentY].type = TILE;
-    board->board[currentX][currentY + 1].type = TILE;
-    break;
-    default:
-   break;
+void set_player_colors(Character* characters, int numPlayers, Color* chosenColors) {
+    for (int i = 0; i < numPlayers; i++) {
+        characters[i].color = chosenColors[i];
     }
-  if (currentX == startX && currentY == startY) break;
-  }
-} 
+}
 
-void initialize_characters(Character* characters, int numPlayers, bool* isAI, CharacterType* selectedTypes) {
-  for (int i = 0; i < numPlayers; i++) {
-    characters[i].type = isAI[i] ? AI : PLAYER; 
-    characters[i].character_type = selectedTypes[i]; 
-    characters[i].currency = 100; 
-    characters[i].tanks_count = 0; 
+void setup_player_start_area(Board* board, Character* characters, int player, int start_x, int start_y) {
+    CharacterType playerType = characters[player].character_type;
+    Color playerColor = characters[player].color;  // Use dynamic color assigned to the character
 
-    switch (selectedTypes[i]) {
-      case PLAYER_ONE: characters[i].color = RED; break;
-      case PLAYER_TWO: characters[i].color = BLUE; break;
-      case PLAYER_THREE: characters[i].color = GREEN; break;
-      case PLAYER_FOUR: characters[i].color = YELLOW; break;
-      case AI_ONE: characters[i].color = GRAY; break;
-      case AI_TWO: characters[i].color = DARKGRAY; break;
-      case AI_THREE: characters[i].color = PURPLE; break;
-      case AI_FOUR: characters[i].color = ORANGE; break;
-      default: characters[i].color = WHITE; break;
+    for (int i = 0; i < START_AREA_SIZE; i++) {
+        for (int j = 0; j < START_AREA_SIZE; j++) {
+            int x = start_x + i;
+            int y = start_y + j;
+            if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+                board->board[y][x].type = PLAYER_TILE;
+                board->board[y][x].health = 100;
+                board->characters[y][x] = playerType;
+
+                // Assign the player's color to the board tile
+                board->board[y][x].color = playerColor;
+            }
+        }
+    }
+}
+
+void initialize_board(Board* board, Character* characters, int numPlayers) {
+    for (int i = 0; i < GRID_SIZE; i++) {
+        for (int j = 0; j < GRID_SIZE; j++) {
+            board->board[i][j].health = 100;
+            board->board[i][j].type = BORDER;
+            board->characters[i][j] = NONE;
+        }
     }
 
-    switch (i) {
-      case 0: 
-        characters[i].pos.x = GRID_SIZE / 2; 
-        characters[i].pos.y = 0;
-        break;
-      case 1:
-        characters[i].pos.x = GRID_SIZE / 2; 
-        characters[i].pos.y = GRID_SIZE - 1; 
-        break;
-      case 2: 
-        characters[i].pos.x = 0; 
-        characters[i].pos.y = GRID_SIZE / 2; 
-        break;
-      case 3: 
-        characters[i].pos.x = GRID_SIZE - 1;
-        characters[i].pos.y = GRID_SIZE / 2; 
-        break;
+    switch (numPlayers) {
+        case 2:
+            setup_player_start_area(board, characters, 0, GRID_SIZE / 2 - START_AREA_SIZE / 2, 0);
+            setup_player_start_area(board, characters, 1, GRID_SIZE / 2 - START_AREA_SIZE / 2, GRID_SIZE - START_AREA_SIZE);
+            break;
+        case 4:
+            setup_player_start_area(board, characters, 0, GRID_SIZE / 2 - START_AREA_SIZE / 2, 0);
+            setup_player_start_area(board, characters, 1, GRID_SIZE / 2 - START_AREA_SIZE / 2, GRID_SIZE - START_AREA_SIZE);
+            setup_player_start_area(board, characters, 2, 0, GRID_SIZE / 2 - START_AREA_SIZE / 2);
+            setup_player_start_area(board, characters, 3, GRID_SIZE - START_AREA_SIZE, GRID_SIZE / 2 - START_AREA_SIZE / 2);
+            break;
     }
 
-    characters[i].tanks = NULL; 
-  }
+    generate_maze(board);
+}
+
+void initialize_characters(Character* characters, int numPlayers, bool* isAI, CharacterType* selectedTypes, Color* chosenColors) {
+    set_player_colors(characters, numPlayers, chosenColors);
+
+    for (int i = 0; i < numPlayers; i++) {
+        characters[i].type = isAI[i] ? AI : PLAYER;
+        characters[i].character_type = selectedTypes[i];
+        characters[i].currency = 0;  
+        characters[i].tanks_count = 0;
+        characters[i].frame_counter = 0;
+        characters[i].tanks_count = 0;
+
+        switch (i) {
+            case 0:
+                characters[i].pos.x = GRID_SIZE / 2;
+                characters[i].pos.y = 0;
+                break;
+            case 1:
+                characters[i].pos.x = GRID_SIZE / 2;
+                characters[i].pos.y = GRID_SIZE - 1;
+                break;
+            case 2:
+                characters[i].pos.x = 0;
+                characters[i].pos.y = GRID_SIZE / 2;
+                break;
+            case 3:
+                characters[i].pos.x = GRID_SIZE - 1;
+                characters[i].pos.y = GRID_SIZE / 2;
+                break;
+        }
+
+        characters[i].tanks = NULL;
+    }
 }
 
 bool IsButtonClicked(Rectangle button) {
@@ -127,31 +112,40 @@ void DrawButton(Rectangle button, Color color, const char* text) {
   DrawText(text, button.x + button.width / 2 - textWidth / 2, button.y + button.height / 2 - 10, 20, BLACK);
 }
 
-void draw_board(Board* board, Character* characters, int character_count, int offsetX, int offsetY) {
-  for (int i = 0; i < GRID_SIZE; i++) {
-    for (int j = 0; j < GRID_SIZE; j++) {
-      Color tileColor;
-
-      if (board->board[i][j].type == BORDER) {
-        tileColor = GRAY;
-      } else {
-        if (board->characters[i][j] == NONE) {
-          tileColor = LIGHTGRAY;  
-        } else {
-          tileColor = characters[board->characters[i][j] - 1].color;
-        }
-      }
-
-      // Apply offset to position the board in the center
-      DrawRectangle(j * CELL_SIZE + offsetX, i * CELL_SIZE + offsetY, CELL_SIZE, CELL_SIZE, tileColor);
-
-      if (board->board[i][j].type == TILE) {
-        char healthText[8];
-        sprintf(healthText, "%d", board->board[i][j].health);
-        DrawText(healthText, j * CELL_SIZE + 10 + offsetX, i * CELL_SIZE + 10 + offsetY, 10, BLACK);
-      }
+void DrawColorButtons(ColorButton* buttons, int count) {
+    for (int i = 0; i < count; i++) {
+        DrawRectangleRec(buttons[i].buttonRect, buttons[i].color);
+        DrawRectangleLinesEx(buttons[i].buttonRect, 2, DARKGRAY);
     }
-  }
+}
+
+void draw_board(Board* board, Character* characters, int character_count, int offsetX, int offsetY) {
+    for (int i = 0; i < GRID_SIZE; i++) {
+        for (int j = 0; j < GRID_SIZE; j++) {
+            Color tileColor;
+
+            if (board->board[i][j].type == BORDER) {
+                tileColor = GRAY;
+            } else {
+                CharacterType owner = board->characters[i][j];
+                switch (owner) {
+                    case PLAYER_ONE: tileColor = RED; break;
+                    case PLAYER_TWO: tileColor = BLUE; break;
+                    case PLAYER_THREE: tileColor = GREEN; break;
+                    case PLAYER_FOUR: tileColor = YELLOW; break;
+                    default: tileColor = LIGHTGRAY; break;
+                }
+            }
+
+            DrawRectangle(j * CELL_SIZE + offsetX, i * CELL_SIZE + offsetY, CELL_SIZE, CELL_SIZE, tileColor);
+
+            if (board->board[i][j].type == TILE) {
+                char healthText[8];
+                sprintf(healthText, "%d", board->board[i][j].health);
+                DrawText(healthText, j * CELL_SIZE + 10 + offsetX, i * CELL_SIZE + 10 + offsetY, 10, BLACK);
+            }
+        }
+    }
 }
 
 void capture_tile(Board* board, Tank* tank, int x, int y) {
@@ -167,42 +161,41 @@ void capture_tile(Board* board, Tank* tank, int x, int y) {
 }
 
 void update_tanks(Board* board, Character* characters, int character_count) {
-  for (int c = 0; c < character_count; c++) {
-    Character* character = &characters[c];
+    for (int c = 0; c < character_count; c++) {
+        Character* character = &characters[c];
 
-    for (unsigned int i = 0; i < character->tanks_count; i++) {
-      Tank* tank = &character->tanks[i];
+        for (unsigned int i = 0; i < character->tanks_count; i++) {
+            Tank* tank = &character->tanks[i];
 
-      if (tank->is_alive) {
-        int grid_x = (int)(tank->rect.x / CELL_SIZE);
-        int grid_y = (int)(tank->rect.y / CELL_SIZE);
+            if (tank->is_alive) {
+                int grid_x = (int)(tank->pos.x / CELL_SIZE);
+                int grid_y = (int)(tank->pos.y / CELL_SIZE);
 
-        if (grid_x >= 0 && grid_x < GRID_SIZE && grid_y >= 0 && grid_y < GRID_SIZE) {
-          capture_tile(board, tank, grid_y, grid_x);
+                if (grid_x >= 0 && grid_x < GRID_SIZE && grid_y >= 0 && grid_y < GRID_SIZE) {
+                    capture_tile(board, tank, grid_y, grid_x);
+                }
+            }
         }
-      }
     }
-  }
 }
 
 void draw_tanks(Character* characters, int character_count, int offsetX, int offsetY) {
-  for (int c = 0; c < character_count; c++) {
-    Character* character = &characters[c];
+    for (int c = 0; c < character_count; c++) {
+        Character* character = &characters[c];
 
-    for (unsigned int i = 0; i < character->tanks_count; i++) {
-      Tank* tank = &character->tanks[i];
+        for (unsigned int i = 0; i < character->tanks_count; i++) {
+            Tank* tank = &character->tanks[i];
 
-      if (tank->is_alive) {
-        Rectangle tankRect = {
-          .x = tank->rect.x + offsetX,
-          .y = tank->rect.y + offsetY,
-          .width = tank->rect.width,
-          .height = tank->rect.height
-        };
-        DrawRectanglePro(tankRect, (Vector2){tank->rect.width / 2, tank->rect.height / 2}, tank->rotation, character->color);
-      }
+            if (tank->is_alive) {
+                Vector2 position = {
+                    tank->pos.x + offsetX,
+                    tank->pos.y + offsetY
+                };
+
+                DrawTextureEx(tank->texture, position, tank->rotation, 1.0f, WHITE);
+            }
+        }
     }
-  }
 }
 
 void draw_currency(Character* characters, int character_count) {
@@ -230,201 +223,264 @@ void draw_currency(Character* characters, int character_count) {
     }
 }
 
-void spawn_tank(Character* character, int x, int y) {
-  character->tanks = realloc(character->tanks, sizeof(Tank) * (character->tanks_count + 1));
-
-  Tank new_tank = {
-    .rect = (Rectangle){ x * CELL_SIZE, y * CELL_SIZE, BASE_TANK_SIZE, BASE_TANK_SIZE },
-    .speed = BASE_TANK_SPEED,
-    .direction = 0,
-    .is_alive = true,
-    .rotation = 0.0f,
-    .health = 100.0f,
-    .fire_timer = 0.0f,
-    .fire_speed = 300.0f,
-    .fire_cooldown = BASE_TANK_FIRE_COOLDOWN,
-    .owner = character->character_type,
-    .capture_timer = 0.0f
-  };
-
-  character->tanks[character->tanks_count] = new_tank;
-  character->tanks_count++;
+void spawn_player_tile(Board* board, Character* character, int start_x, int start_y) {
+    int x = start_x + START_AREA_SIZE / 2;
+    int y = start_y + START_AREA_SIZE / 2;
+    
+    if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+        board->board[y][x].type = TILE;
+        board->board[y][x].health = 100;
+        board->characters[y][x] = character->character_type;
+        character->pos.x = x;
+        character->pos.y = y;
+    }
 }
 
-void update_currency(Character* character, int character_count, Board* board) {
-  for (int c = 0; c < character_count; c++) {
-    character[c].currency = 0;
+void spawn_tank(Character* character, int x, int y) {
+    character->tanks = realloc(character->tanks, sizeof(Tank) * (character->tanks_count + 1));
 
-    for (int i = 0; i < GRID_SIZE; i++) {
-      for (int j = 0; j < GRID_SIZE; j++) {
-        if (board->characters[i][j] == character[c].character_type) {
-          character[c].currency += 10;  
+    Tank new_tank = {
+        .texture = BASE_TANKS_COLOR[character->character_type],
+        .pos = {x * CELL_SIZE, y * CELL_SIZE},
+        .speed = BASE_TANK_SPEED,
+        .direction = 0,
+        .is_alive = true,
+        .rotation = 0.0f,
+        .health = 100.0f,
+        .fire_timer = 0.0f,
+        .fire_speed = 300.0f,
+        .fire_cooldown = BASE_TANK_FIRE_COOLDOWN,
+        .owner = character->character_type,
+        .capture_timer = 0.0f
+    };
+
+    character->tanks[character->tanks_count] = new_tank;
+    character->tanks_count++;
+}
+
+void update_currency(Character* characters, int character_count) {
+    for (int c = 0; c < character_count; c++) {
+        characters[c].frame_counter++;
+
+        if (characters[c].frame_counter >= CURRENCY_RATE) {
+            characters[c].currency++;  
+            characters[c].frame_counter = 0;
         }
-      }
+
+        // Optional: Additional logic for gaining currency based on owned tiles can remain here
     }
-  }
 }
 
 void RunSimulation() {
-  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "You Vs AI - Maze Game");
-  int offsetX = (SCREEN_WIDTH - GRID_SIZE * CELL_SIZE) / 2;
-  int offsetY = (SCREEN_HEIGHT - GRID_SIZE * CELL_SIZE) / 2;
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "You Vs AI - Maze Game");
+    int offsetX = (SCREEN_WIDTH - GRID_SIZE * CELL_SIZE) / 2;
+    int offsetY = (SCREEN_HEIGHT - GRID_SIZE * CELL_SIZE) / 2;
 
-  GameScreen screen = TITLE_SCREEN;
-  int numPlayers = 0;
-  bool isAI[4] = { false, false, false, false }; 
-  int playerConfig[4] = { 0, 0, 0, 0 }; 
-  CharacterType selectedTypes[4];  
-  Character characters[4]; 
+    GameScreen screen = TITLE_SCREEN;
+    int numPlayers = 0;
+    bool isAI[4] = { false, false, false, false };
+    int playerConfig[4] = { 0, 0, 0, 0 };
+    CharacterType selectedTypes[4];
+    Character characters[4];
+    Color chosenColors[4] = { RED, BLUE, GREEN, YELLOW };  
 
-  Board gameBoard = { 0 };
+    Board gameBoard = { 0 };
+    ColorButton colorButtons[COLOR_COUNT];
 
-  initialize_board(&gameBoard);
-  generate_maze(&gameBoard);
-
-  SetTargetFPS(60);
-
-  while (!WindowShouldClose()) {
-    switch (screen) {
-      case TITLE_SCREEN:
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("You Vs AI", 300, 200, 40, DARKGRAY);
-
-        Rectangle startButton = { 350, 300, 100, 50 };
-        DrawButton(startButton, LIGHTGRAY, "Start");
-
-        if (IsButtonClicked(startButton)) {
-          screen = PLAYER_SELECT;
-        }
-
-        EndDrawing();
-        break;
-
-      case PLAYER_SELECT:
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("Player Select Screen", 300, 150, 20, DARKGRAY);
-
-        Rectangle oneVOneButton = { 300, 200, 200, 50 };
-        DrawButton(oneVOneButton, LIGHTGRAY, "1v1");
-
-        Rectangle twoVTwoButton = { 300, 300, 200, 50 };
-        DrawButton(twoVTwoButton, LIGHTGRAY, "2v2");
-
-        if (IsButtonClicked(oneVOneButton)) {
-          numPlayers = 2;
-          screen = PLAYER_TYPE;
-        }
-        if (IsButtonClicked(twoVTwoButton)) {
-          numPlayers = 4;
-          screen = PLAYER_TYPE;
-        }
-
-        EndDrawing();
-        break;
-
-      case PLAYER_TYPE:
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("Player Type Select", 100, 50, 20, DARKGRAY);
-
-        for (int i = 0; i < numPlayers; i++) {
-          Rectangle playerTypeButton = { 100, 100 + (i * 100), 200, 50 };
-
-          if (playerConfig[i] == 0) {
-            DrawButton(playerTypeButton, LIGHTGRAY, "Player");
-          } else {
-            DrawButton(playerTypeButton, LIGHTGRAY, "CPU");
-          }
-
-          if (IsButtonClicked(playerTypeButton)) {
-            playerConfig[i] = !playerConfig[i];
-            isAI[i] = (playerConfig[i] == 1);
-          }
-
-          Rectangle blueTypeButton = { 300, 100 + (i * 100), 100, 50 };
-          Rectangle redTypeButton = { 400, 100 + (i * 100), 100, 50 };
-          Rectangle greenTypeButton = { 500, 100 + (i * 100), 100, 50 };
-          Rectangle yellowTypeButton = { 600, 100 + (i * 100), 100, 50 };
-
-          if (IsButtonClicked(blueTypeButton)) {
-            selectedTypes[i] = PLAYER_ONE;
-            DrawButton(blueTypeButton, BLUE, "Blue");
-          } else {
-            DrawButton(blueTypeButton, LIGHTGRAY, "Blue");
-          }
-          if (IsButtonClicked(redTypeButton)) {
-            selectedTypes[i] = PLAYER_TWO;
-            DrawButton(redTypeButton, RED, "Red");
-          } else {
-            DrawButton(redTypeButton, LIGHTGRAY, "Red");
-          }
-          if (IsButtonClicked(greenTypeButton)) {
-            selectedTypes[i] = PLAYER_THREE;
-            DrawButton(greenTypeButton, GREEN, "Green");
-          } else {
-            DrawButton(greenTypeButton, LIGHTGRAY, "Green");
-          }
-          if (IsButtonClicked(yellowTypeButton)) {
-            selectedTypes[i] = PLAYER_FOUR;
-            DrawButton(yellowTypeButton, YELLOW, "Yellow");
-          } else {
-            DrawButton(yellowTypeButton, LIGHTGRAY, "Yellow");
-          }
-        }
-
-        Rectangle startGameButton = { 700, 500, 100, 50};
-        DrawButton(startGameButton, LIGHTGRAY, "Start Game");
-
-        Rectangle backButton = { 0, 500, 100, 50 };
-        DrawButton(backButton, LIGHTGRAY, "Back");
-
-        if (IsButtonClicked(startGameButton)) {
-          initialize_characters(characters, numPlayers, isAI, selectedTypes);  
-          screen = GAME_SCREEN;
-        }
-
-        if (IsButtonClicked(backButton)) {
-          screen = PLAYER_SELECT;
-        }
-
-        EndDrawing();
-        break;
-
-      case GAME_SCREEN:
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-
-        draw_board(&gameBoard, characters, numPlayers, offsetX, offsetY); 
-        draw_tanks(characters, numPlayers, offsetX, offsetY);
-        draw_currency(characters, numPlayers);
-
-        update_tanks(&gameBoard, characters, numPlayers);
-
-        switch (numPlayers) {
-          case 2:
-            spawn_tank(&characters[0], GRID_SIZE / 2, 0);  
-            spawn_tank(&characters[1], GRID_SIZE / 2, GRID_SIZE - 1);  
-            break;
-          case 4: 
-            spawn_tank(&characters[0], GRID_SIZE / 2, 0);  
-            spawn_tank(&characters[1], GRID_SIZE / 2, GRID_SIZE - 1);  
-            spawn_tank(&characters[2], 0, GRID_SIZE / 2);  
-            spawn_tank(&characters[3], GRID_SIZE - 1, GRID_SIZE / 2);  
-          break;
-        }
-
-        EndDrawing();
-        break;
+    for (int i = 0; i < COLOR_COUNT; i++) {
+        colorButtons[i].color = availableColors[i];
+        colorButtons[i].buttonRect = (Rectangle){ 50 + (i * 60), 300, 50, 50 };
     }
-  }
 
-  CloseWindow();
+    int selectedColorIndex = -1;
+    int currentPlayer = 0;
+
+    LoadBaseTankTextures();
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+        switch (screen) {
+            case TITLE_SCREEN:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+                DrawText("You Vs AI", 300, 200, 40, DARKGRAY);
+
+                Rectangle startButton = { 350, 300, 100, 50 };
+                DrawButton(startButton, LIGHTGRAY, "Start");
+
+                if (IsButtonClicked(startButton)) {
+                    screen = PLAYER_SELECT;
+                }
+
+                EndDrawing();
+                break;
+
+            case PLAYER_SELECT:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+                DrawText("Select Number of Players", 200, 200, 30, DARKGRAY);
+
+                Rectangle player2Button = { 300, 300, 100, 50 };
+                Rectangle player4Button = { 450, 300, 100, 50 };
+                DrawButton(player2Button, LIGHTGRAY, "2 Players");
+                DrawButton(player4Button, LIGHTGRAY, "4 Players");
+
+                if (IsButtonClicked(player2Button)) {
+                    numPlayers = 2;
+                    screen = COLOR_SELECT;
+                }
+                if (IsButtonClicked(player4Button)) {
+                    numPlayers = 4;
+                    screen = COLOR_SELECT;
+                }
+
+                EndDrawing();
+                break;
+
+            case COLOR_SELECT:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+                DrawText("Select Color for Player", 200, 200, 30, DARKGRAY);
+
+                DrawText(TextFormat("Player %d", currentPlayer + 1), 200, 250, 20, DARKGRAY);
+
+                DrawColorButtons(colorButtons, COLOR_COUNT);
+
+                selectedColorIndex = CheckColorSelection(colorButtons, COLOR_COUNT);
+                if (selectedColorIndex != -1) {
+                    chosenColors[currentPlayer] = availableColors[selectedColorIndex];
+                    currentPlayer++;
+
+                    if (currentPlayer >= numPlayers) {
+                        screen = GAME_SCREEN;
+                        currentPlayer = 0;
+                        initialize_board(&gameBoard, characters, numPlayers);
+                        initialize_characters(characters, numPlayers, isAI, selectedTypes, chosenColors);
+                    }
+                }
+
+                EndDrawing();
+                break;
+
+            case GAME_SCREEN:
+                BeginDrawing();
+                ClearBackground(BLACK);
+                
+                draw_board(&gameBoard, characters, numPlayers, offsetX, offsetY);
+                draw_tanks(characters, numPlayers, offsetX, offsetY);
+                draw_currency(characters, numPlayers);
+
+                EndDrawing();
+                break;
+
+            case GAME_OVER:
+                BeginDrawing();
+                ClearBackground(BLACK);
+                DrawText("Game Over", 400, 300, 30, RED);
+                EndDrawing();
+                break;
+        }
+    }
+
+    CloseWindow();
+}
+void Run() {
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "You Vs AI - Maze Game");
+    int offsetX = (SCREEN_WIDTH - GRID_SIZE * CELL_SIZE) / 2;
+    int offsetY = (SCREEN_HEIGHT - GRID_SIZE * CELL_SIZE) / 2;
+
+    GameScreen screen = TITLE_SCREEN;
+    int numPlayers = 0;
+    bool isAI[4] = { false, false, false, false };
+    int playerConfig[4] = { 0, 0, 0, 0 };
+    CharacterType selectedTypes[4];
+    Character characters[4];
+    Color chosenColors[4] = { RED, BLUE, GREEN, YELLOW };  
+
+    Board gameBoard = { 0 };
+
+    LoadBaseTankTextures();
+
+    SetTargetFPS(60);
+
+    while (!WindowShouldClose()) {
+        switch (screen) {
+            case TITLE_SCREEN:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+                DrawText("You Vs AI", 300, 200, 40, DARKGRAY);
+
+                Rectangle startButton = { 350, 300, 100, 50 };
+                DrawButton(startButton, LIGHTGRAY, "Start");
+
+                if (IsButtonClicked(startButton)) {
+                    screen = PLAYER_SELECT;
+                }
+
+                EndDrawing();
+                break;
+
+          case PLAYER_SELECT:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+                DrawText("Select Number of Players", 200, 150, 30, DARKGRAY);
+
+                Rectangle twoPlayerButton = { 250, 300, 100, 50 };
+                Rectangle fourPlayerButton = { 450, 300, 100, 50 };
+                DrawButton(twoPlayerButton, LIGHTGRAY, "2 Players");
+                DrawButton(fourPlayerButton, LIGHTGRAY, "4 Players");
+
+                if (IsButtonClicked(twoPlayerButton)) {
+                    numPlayers = 2;
+                    for (int i = 0; i < 2; i++) {
+                        selectedTypes[i] = PLAYER_ONE + i;  
+                    }
+                    screen = GAME_SCREEN;
+                } else if (IsButtonClicked(fourPlayerButton)) {
+                    numPlayers = 4;
+                    for (int i = 0; i < 4; i++) {
+                        selectedTypes[i] = PLAYER_ONE + i;  
+                    }
+                    screen = GAME_SCREEN;
+                }
+
+                EndDrawing();
+                break;
+
+            case GAME_SCREEN:
+                initialize_characters(characters, numPlayers, isAI, selectedTypes, chosenColors);
+                initialize_board(&gameBoard, characters, numPlayers);
+                screen = GAME_PLAY;
+                break;
+
+            case GAME_PLAY:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+
+                draw_board(&gameBoard, characters, numPlayers, offsetX, offsetY);
+                draw_tanks(characters, numPlayers, offsetX, offsetY);
+                draw_currency(characters, numPlayers);
+
+                update_tanks(&gameBoard, characters, numPlayers);
+                update_currency(characters, numPlayers);
+                EndDrawing();
+                break;
+
+            case GAME_OVER:
+                BeginDrawing();
+                ClearBackground(RAYWHITE);
+                DrawText("Game Over", SCREEN_WIDTH / 2 - 100, SCREEN_HEIGHT / 2 - 40, 40, DARKGRAY);
+                EndDrawing();
+                break;
+        }
+    }
+
+    UnloadBaseTankTextures();
+    CloseWindow();
 }
 
 int main(void) {
-  RunSimulation();
-  return 0;
+    Run();
+    return 0;
 }
 
